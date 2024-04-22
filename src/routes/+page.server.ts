@@ -2,6 +2,7 @@ import axios from 'axios';
 import type { AxiosResponse } from 'axios';
 import * as cheerio from 'cheerio';
 import * as fs from 'fs';
+import { slotsJson } from '$lib/slots';
 
 setInterval(mainFunc, 300000);
 
@@ -13,7 +14,7 @@ function mainFunc() {
 			console.error(err);
 			return;
 		}
-		console.log('Time Updated');
+		console.log(`${now.toLocaleTimeString()} - Time Updated`);
 	});
 	async function pageFetch(fetchUrl: string) {
 		const response: AxiosResponse = await axios.get(fetchUrl);
@@ -22,12 +23,6 @@ function mainFunc() {
 	}
 	const $ = pageFetch(fetchUrl);
 	$.then(($) => {
-		let slotsJson: [
-			{
-				link: string;
-				slots: number[];
-			}
-		] = JSON.parse(fs.readFileSync('src/lib/slots.json', 'utf-8'));
 		let titles: string[] = [],
 			links: string[] = [],
 			authors: string[] = [],
@@ -76,7 +71,7 @@ function mainFunc() {
             "link": "${links[i]}",
             "author": "${authors[i]}",
             "rating": ${ratings[i]},
-            "slots": ${slots[i] == undefined ? `[1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009, 1010]` : slots[i]}
+            "slots": ${slots[i] == undefined ? `[1001, 1002, 1003, 1004, 1005]` : slots[i]}
         }${i == titles.length - 1 ? '' : ','}`;
 		});
 		outputs += '\n]';
@@ -86,7 +81,14 @@ function mainFunc() {
 				console.error(err);
 				return;
 			}
-			console.log('Config Updated');
+			console.log(`${now.toLocaleTimeString()} - Config Updated`);
 		});
 	});
+}
+
+export function load() {
+	const timeNow = new Date().toISOString();
+	return {
+		time: timeNow
+	};
 }

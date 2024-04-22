@@ -1,31 +1,41 @@
 <script lang="ts">
 	import * as fs from 'fs';
-	let configJson: [
-		{
-			title: string;
-			link: string;
-			author: string;
-			rating: number;
-			slots: number[];
-		}
-	] = JSON.parse(fs.readFileSync('src/lib/config.json', 'utf-8'));
+	let configJson: {
+		title: string;
+		link: string;
+		author: string;
+		rating: number;
+		slots: number[];
+	}[] = JSON.parse(fs.readFileSync('src/lib/config.json', 'utf-8'));
 	let time = JSON.parse(fs.readFileSync('src/lib/time.json', 'utf-8')).time;
-	let selectedSlot: number[] = [];
-	let selectedIndex: number[] = [];
-	let selected: Set<number> = new Set();
+	let selected: {
+		slot: number;
+		index: number;
+	}[] = [
+		{
+			slot: 1000,
+			index: 0
+		}
+	];
 	configJson.forEach((config, index) => {
-		if (index == 0) {
-			selected.add(100);
-			selectedSlot.push(1000);
-			selectedIndex.push(0);
-		} else {
+		if (index != 0) {
 			let loopCount: number = 0;
+			let backupSlot: number = 1001;
 			for (let slot of config.slots) {
 				loopCount++;
-				if (!selected.has(slot)) {
-					selected.add(slot);
-					selectedSlot.push(slot);
-					selectedIndex.push(loopCount);
+				if (!selected.some((item) => item.slot == slot)) {
+					selected.push({ slot: slot, index: loopCount });
+					break;
+				}
+				if (loopCount == config.slots.length) {
+					while (selected.some((item) => item.slot == backupSlot)) {
+						backupSlot++;
+						if (!config.slots.includes(backupSlot)) {
+							config.slots.push(backupSlot);
+							loopCount++;
+						}
+					}
+					selected.push({ slot: backupSlot, index: loopCount });
 					break;
 				}
 			}
@@ -48,7 +58,7 @@
 						target="_blank"
 						rel="noreferrer noopener"
 					>
-						Level C-{index == 0 ? 1000 : selectedSlot[index]} - {config.title}
+						Level C-{index == 0 ? 1000 : selected[index].slot} - {config.title}
 					</a>
 					（{config.rating > 0 ? `+${config.rating}` : config.rating}）
 				</div>
@@ -58,7 +68,7 @@
 						<summary>要求编号（按顺序列出）</summary>
 						<div class="blockquote">
 							{#each config.slots as slot, jndex}
-								{#if jndex + 1 < selectedIndex[index]}
+								{#if jndex + 1 < selected[index].index}
 									<del>{slot}</del>{config.slots.length == jndex + 1 ? '' : ','}&nbsp;
 								{:else}
 									{slot}{config.slots.length == jndex + 1 ? '' : ','}&nbsp;
