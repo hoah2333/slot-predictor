@@ -1,13 +1,17 @@
 <script lang="ts">
-	import * as fs from 'fs';
+    import type { PageServerData } from './$types';
+    export let data: PageServerData;
+
 	let configJson: {
 		title: string;
 		link: string;
 		author: string;
 		rating: number;
 		slots: number[];
-	}[] = JSON.parse(fs.readFileSync('src/lib/config.json', 'utf-8'));
-	let time = JSON.parse(fs.readFileSync('src/lib/time.json', 'utf-8')).time;
+	}[] = data.slotConfigs;
+
+	let time: Date = data.time;
+
 	let selected: {
 		slot: number;
 		index: number;
@@ -17,6 +21,7 @@
 			index: 0
 		}
 	];
+    
 	configJson.forEach((config, index) => {
 		if (index != 0) {
 			let loopCount: number = 0;
@@ -49,6 +54,9 @@
 		<h4>页面上次更新时间：{new Date(time).toLocaleString()}</h4>
 	</div>
 	<div class="component-wrapper">
+        {#if configJson.length == 0}
+            数据正在加载中，请等待……
+        {/if}
 		{#each configJson as config, index}
 			<div class="predicts">
 				<div class="link">
