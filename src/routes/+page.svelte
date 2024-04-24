@@ -1,6 +1,7 @@
 <script lang="ts">
-    import type { PageServerData } from './$types';
-    export let data: PageServerData;
+	import type { PageServerData } from './$types';
+	export let data: PageServerData;
+	import { deductedAuthors } from '$lib/deductedAuthors';
 
 	let configJson: {
 		title: string;
@@ -21,7 +22,7 @@
 			index: 0
 		}
 	];
-    
+
 	configJson.forEach((config, index) => {
 		if (index != 0) {
 			let loopCount: number = 0;
@@ -54,9 +55,9 @@
 		<h4>页面上次更新时间：{new Date(time).toLocaleString()}</h4>
 	</div>
 	<div class="component-wrapper">
-        {#if configJson.length == 0}
-            数据正在加载中，请等待……
-        {/if}
+		{#if configJson.length == 0}
+			数据正在加载中，请等待……
+		{/if}
 		{#each configJson as config, index}
 			<div class="predicts">
 				<div class="link">
@@ -69,6 +70,9 @@
 						Level C-{index == 0 ? 1000 : selected[index].slot} - {config.title}
 					</a>
 					（{config.rating > 0 ? `+${config.rating}` : config.rating}）
+					{#if deductedAuthors.includes(config.author)}
+						<small>{config.rating / 0.93} * 93% = {config.rating}</small>
+					{/if}
 				</div>
 				<div class="author">作者：{config.author}</div>
 				<div class="slots">
