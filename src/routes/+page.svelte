@@ -71,7 +71,7 @@
 					</a>
 					（{config.rating > 0 ? `+${config.rating}` : config.rating}）
 					{#if deductedAuthors.includes(config.author)}
-						<small>{config.rating / 0.93} * 93% = {config.rating}</small>
+						<small>{(config.rating / 0.93).toFixed(0)} * 93% = {config.rating}</small>
 					{/if}
 				</div>
 				<div class="author">作者：{config.author}</div>

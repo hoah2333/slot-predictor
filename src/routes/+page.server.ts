@@ -1,10 +1,10 @@
 import axios from 'axios';
-import type { AxiosResponse } from 'axios';
+import { AxiosError, type AxiosResponse } from 'axios';
 import * as cheerio from 'cheerio';
 import type { PageServerLoad } from './$types';
 import { deductedAuthors } from '$lib/deductedAuthors';
+import WDmodule from '$lib/WDmodule';
 
-const fetchUrl: string = 'https://backrooms-wiki-cn.wikidot.com/author:hoah2333';
 let updateTime: Date = new Date();
 let slotConfigs: {
 	title: string;
@@ -14,30 +14,56 @@ let slotConfigs: {
 	slots: number[];
 }[] = [];
 
+let wdModule = new WDmodule('https://backrooms-wiki-cn.wikidot.com');
+
 await mainFunc();
 
 async function mainFunc(): Promise<void> {
 	console.log(`${new Date().toLocaleString()} - 程序开始运行`);
 	setInterval(async () => {
 		updateTime = new Date();
-		const $: cheerio.CheerioAPI = await pageFetch(fetchUrl);
-		await pageProcess($);
+		let listPages = await wdModule.ajaxPost(
+			{
+				category: 'thous',
+				order: 'rating desc',
+				perPage: '100',
+				separate: 'false',
+				tags: '+1k竞赛 +原创 -竞赛 -中心 -艺术作品',
+				prependLine: '||~ 名称 ||~ 创建者 ||~ 分数 ||',
+				module_body: `|| %%title_linked%% || [[*user %%created_by%%]] || %%rating%% ||`
+			},
+			'list/ListPagesModule'
+		);
+		await pageProcess(cheerio.load(listPages.data.body));
 		console.log(`${new Date().toLocaleString()} - 预测已更新`);
 	}, 300000);
 }
 
 async function pageFetch(fetchUrl: string): Promise<cheerio.CheerioAPI> {
-	console.log(`${new Date().toLocaleString()} - 页面获取中 - ${fetchUrl}`);
-	let response: AxiosResponse = await axios({
-		method: 'get',
-		url: fetchUrl
-	});
+	// console.log(`${new Date().toLocaleString()} - 正在获取 ${fetchUrl}`);
+	let response: AxiosResponse | null = null;
+	try {
+		response = await axios({
+			method: 'get',
+			url: fetchUrl
+		});
+	} catch (error: any) {
+		if (error instanceof AxiosError)
+			console.error(
+				`在获取 ${error.request._currentUrl} 时出现 ${error.code} 错误，原因：${error.cause}`
+			);
+	} finally {
+		// 不能让上一个 get 进程与下一个 get 进程之间间隔太小，否则会报 socket hang up
+		// 在这里 sleep(1000) 就可以解决问题
+		await new Promise((sleep) => setTimeout(sleep, 1000));
+	}
 
-	// 不能让上一个 get 进程与下一个 get 进程之间间隔太小，否则会报 socket hang up
-	// 在这里 sleep(1000) 就可以解决问题
-	await new Promise((sleep) => setTimeout(sleep, 1000));
-
-	return cheerio.load(response.data);
+	if (response != null) {
+		return cheerio.load(response.data);
+	} else {
+		console.error(`获取页面失败`);
+		return cheerio.load('<h1>获取页面失败</h1>');
+	}
 }
 
 async function pageProcess($: cheerio.CheerioAPI): Promise<void> {
@@ -73,7 +99,7 @@ async function pageProcess($: cheerio.CheerioAPI): Promise<void> {
 	links.forEach(async (link, i) => {
 		let slots: number[] = await slotProcess(links[i], authors[i]);
 		if (deductedAuthors.includes(authors[i])) {
-			ratings[i] *= 0.93;
+			ratings[i] = parseFloat((ratings[i] * 0.93).toFixed(2));
 		}
 		slotConfigs.push({
 			title: titles[i],
@@ -97,6 +123,11 @@ async function slotProcess(link: string, author: string): Promise<number[]> {
 		})
 		.get();
 	let discussNum: string = discussLink[0].split('/')[2];
+	if (discussNum == undefined) {
+		console.error(`${new Date().toLocaleString()} - 获取 ${link} 的讨论页链接失败`);
+		return [1001];
+	}
+	await new Promise((sleep) => setTimeout(sleep, 3000));
 	const discussXML: cheerio.CheerioAPI = await pageFetch(
 		`https://backrooms-wiki-cn.wikidot.com/feed/forum/${discussNum}.xml`
 	);
