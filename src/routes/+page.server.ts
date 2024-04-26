@@ -34,20 +34,20 @@ await mainFunc();
 
 async function mainFunc(): Promise<void> {
 	console.log(`${new Date().toLocaleString()} - 程序开始运行`);
-	// setInterval(async () => {
-	updateTime = new Date();
-	let listPages = await wdModule.getListpages({
-		category: 'thous',
-		order: 'rating desc',
-		perPage: '100',
-		separate: 'false',
-		tags: '+1k竞赛 +原创 -竞赛 -中心 -艺术作品',
-		prependLine: '||~ 名称 ||~ 创建者 ||~ 分数 ||',
-		module_body: `|| %%title_linked%% || [[*user %%created_by%%]] || %%rating%% ||`
-	});
-	await pageProcess(cheerio.load(listPages.data.body));
-	console.log(`${new Date().toLocaleString()} - 预测已更新`);
-	// }, 60000);
+	setInterval(async () => {
+		updateTime = new Date();
+		let listPages = await wdModule.getListpages({
+			category: 'thous',
+			order: 'rating desc',
+			perPage: '100',
+			separate: 'false',
+			tags: '+1k竞赛 +原创 -竞赛 -中心 -艺术作品',
+			prependLine: '||~ 名称 ||~ 创建者 ||~ 分数 ||',
+			module_body: `|| %%title_linked%% || [[*user %%created_by%%]] || %%rating%% ||`
+		});
+		await pageProcess(cheerio.load(listPages.data.body));
+		console.log(`${new Date().toLocaleString()} - 预测已更新`);
+	}, 300000);
 }
 
 async function pageFetch(fetchUrl: string): Promise<cheerio.CheerioAPI> {
