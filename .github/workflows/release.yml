@@ -23,6 +23,7 @@ jobs:
 
       - name: 构建
         run: |
+          npm install vite
           npm run build
 
       - name: 创建新发布
