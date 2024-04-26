@@ -4,6 +4,8 @@ import * as cheerio from 'cheerio';
 import type { PageServerLoad } from './$types';
 import { deductedAuthors } from '$lib/deductedAuthors';
 import WDmodule from '$lib/WDmodule';
+import WDmethod from '$lib/WDmethod';
+import * as fs from 'fs';
 
 let updateTime: Date = new Date();
 let slotConfigs: {
@@ -14,29 +16,38 @@ let slotConfigs: {
 	slots: number[];
 }[] = [];
 
-let wdModule = new WDmodule('https://backrooms-wiki-cn.wikidot.com');
+let wdModule: any = new WDmodule('https://backrooms-wiki-cn.wikidot.com');
+let wdMethod: any = new WDmethod('https://backrooms-wiki-cn.wikidot.com');
+
+const config: {
+	username: string;
+	password: string;
+} = JSON.parse(fs.readFileSync('./config.json', 'utf-8'));
+
+try {
+	await wdMethod.login(config.username, config.password);
+} catch (error: any) {
+	console.error(error);
+}
 
 await mainFunc();
 
 async function mainFunc(): Promise<void> {
 	console.log(`${new Date().toLocaleString()} - 程序开始运行`);
-	setInterval(async () => {
-		updateTime = new Date();
-		let listPages = await wdModule.ajaxPost(
-			{
-				category: 'thous',
-				order: 'rating desc',
-				perPage: '100',
-				separate: 'false',
-				tags: '+1k竞赛 +原创 -竞赛 -中心 -艺术作品',
-				prependLine: '||~ 名称 ||~ 创建者 ||~ 分数 ||',
-				module_body: `|| %%title_linked%% || [[*user %%created_by%%]] || %%rating%% ||`
-			},
-			'list/ListPagesModule'
-		);
-		await pageProcess(cheerio.load(listPages.data.body));
-		console.log(`${new Date().toLocaleString()} - 预测已更新`);
-	}, 300000);
+	// setInterval(async () => {
+	updateTime = new Date();
+	let listPages = await wdModule.getListpages({
+		category: 'thous',
+		order: 'rating desc',
+		perPage: '100',
+		separate: 'false',
+		tags: '+1k竞赛 +原创 -竞赛 -中心 -艺术作品',
+		prependLine: '||~ 名称 ||~ 创建者 ||~ 分数 ||',
+		module_body: `|| %%title_linked%% || [[*user %%created_by%%]] || %%rating%% ||`
+	});
+	await pageProcess(cheerio.load(listPages.data.body));
+	console.log(`${new Date().toLocaleString()} - 预测已更新`);
+	// }, 60000);
 }
 
 async function pageFetch(fetchUrl: string): Promise<cheerio.CheerioAPI> {
@@ -114,26 +125,14 @@ async function pageProcess($: cheerio.CheerioAPI): Promise<void> {
 }
 
 async function slotProcess(link: string, author: string): Promise<number[]> {
-	const page$: cheerio.CheerioAPI = await pageFetch(
-		`https://backrooms-wiki-cn.wikidot.com${link}/norender/true`
-	);
-	const discussLink: string[] | null = page$('#page-options-bottom #discuss-button')
-		.map(function () {
-			return page$(this).prop('href');
-		})
-		.get();
-	let discussNum: string = discussLink[0].split('/')[2];
-	if (discussNum == undefined) {
-		console.error(`${new Date().toLocaleString()} - 获取 ${link} 的讨论页链接失败`);
-		return [1001];
-	}
-	await new Promise((sleep) => setTimeout(sleep, 3000));
+	// console.log(`${new Date().toLocaleString()} - 正在获取 ${link}`);
+	let discussNum: string = (await wdModule.getThreadId(link)).data.thread_id;
 	const discussXML: cheerio.CheerioAPI = await pageFetch(
-		`https://backrooms-wiki-cn.wikidot.com/feed/forum/${discussNum}.xml`
+		`https://backrooms-wiki-cn.wikidot.com/feed/forum/t-${discussNum}.xml`
 	);
 
 	let slots: number[] = discussXML('channel item')
-		.map(function (index) {
+		.map(function () {
 			if (discussXML(this).find('wikidot\\:authorName').text() == author) {
 				let matchResult: RegExpMatchArray | null = discussXML(this)
 					.find('content\\:encoded')

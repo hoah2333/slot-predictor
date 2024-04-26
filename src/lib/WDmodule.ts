@@ -1,39 +1,34 @@
-import axios from 'axios';
-import type { AxiosResponse } from 'axios';
+import WDmethod from './WDmethod';
 
 class WDmodule {
 	public base: string;
-	public ajax: string;
+	public wdMethod: any;
 	constructor(base: string) {
 		this.base = base;
-		this.ajax = `${base}/ajax-module-connector.php`;
+		this.wdMethod = new WDmethod(base);
 	}
 
-	async ajaxPost(params: any, moduleName: string) {
-		const wikidotToken7 = Math.random().toString(36).substring(4).toLowerCase();
-		const cookie = `wikidot_token7=${wikidotToken7};`;
-		let response: AxiosResponse = await axios({
-			method: 'post',
-			url: `${this.base}/ajax-module-connector.php`,
-			headers: {
-				'User-Agent':
-					'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36',
-				'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-				Cookie: cookie,
-				Origin: this.base,
-				Referer: 'Slot Predictor'
-			},
-			data: Object.assign(
+	async login(username: string, password: string) {
+		return await this.wdMethod.login(username, password);
+	}
+
+	async getListpages(params: any) {
+		return await this.wdMethod.ajaxPost(params, 'list/ListPagesModule');
+	}
+
+	async getThreadId(page: number, params?: any) {
+		let pageId = await this.wdMethod.getPageId(page);
+		return await this.wdMethod.ajaxPost(
+			Object.assign(
 				{
-					moduleName: moduleName,
-					callbackIndex: 0,
-					wikidot_token7: wikidotToken7
+					page_id: pageId,
+					action: 'ForumAction',
+					event: 'createPageDiscussionThread'
 				},
 				params
-			)
-		});
-
-		return response;
+			),
+			'Empty'
+		);
 	}
 }
 
